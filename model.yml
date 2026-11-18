@@ -1,0 +1,6 @@
+$schema: https://azuremlschemas.azureedge.net/latest/model.schema.json
+
+name: diabetes-model
+version: 1
+path: model.pkl
+type: custom_model
