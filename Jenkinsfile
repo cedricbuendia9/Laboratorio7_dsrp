@@ -16,7 +16,7 @@ pipeline {
 
             steps {
 
-                bat '''
+                sh '''
                 docker build -t diabetes-online:v1 .
                 '''
 
