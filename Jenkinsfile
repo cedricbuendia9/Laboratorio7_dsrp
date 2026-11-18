@@ -1,41 +1,67 @@
 pipeline {
-
     agent any
 
     stages {
 
-        stage('Git Clone') {
-
+        stage('Install Dependencies') {
             steps {
-                checkout scm
-            }
-
-        }
-
-        stage('Docker Build') {
-
-            steps {
-
                 sh '''
-                docker build -t diabetes-online:v1 .
+                python3 -m venv venv
+                . venv/bin/activate
+                pip install --upgrade pip
+                pip install -r source/requirements.txt
                 '''
-
             }
-
         }
 
-        stage('Docker Test') {
-
+        stage('Run Tests') {
             steps {
-
-                bat '''
-                docker run -d --name diabetes-test -p 5001:5000 diabetes-online:v1
+                sh '''
+                . venv/bin/activate
+                pytest tests/
                 '''
-
             }
+        }
 
+        stage('Train Model') {
+            steps {
+                sh '''
+                . venv/bin/activate
+                python source/train.py
+                '''
+            }
+        }
+        stage('Build Docker Image') {
+            steps {
+                sh 'docker build -t diabetes-model .'
+            }
+        }
+
+        //stage('Run Container') {
+        //    steps {
+        //        sh 'docker run --rm diabetes-model'
+        //    }
+        //}
+        stage('Deploy API') {
+            steps {
+                sh '''
+                docker stop diabetes-api || true
+                docker rm diabetes-api || true
+
+                docker run -d \
+                --name diabetes-api \
+                -p 5000:5000 \
+                --restart unless-stopped \
+                diabetes-model
+            '''
+            }
         }
 
     }
 
+    post {
+        success {
+            archiveArtifacts artifacts: 'artifacts/model.pkl', fingerprint: true
+        }
+    }
 }
